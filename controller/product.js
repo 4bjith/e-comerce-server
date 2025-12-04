@@ -3,40 +3,63 @@ import express from "express";
 import ProductModel from "../models/model.js";
 
 export const GetProduct = async (req, res) => {
-  // const singleItem= req.query.search;
-  // if(singleItem!=""){
-  //     const pro = await ProductModel.findOne({title:singleItem})
-  //     if(pro){
-  //         return res.json(new Array(pro))
-  //     }else{
-  //         return res.json([])
-  //     }
-  // }
-  // console.log("get req ",singleItem)
-  // const items = await ProductModel.find({})
-  // res.json(items)
-
   try {
-    const { search } = req.query;
+    const { search, page = 1, limit = 10 } = req.query;
 
+    const numericLimit = parseInt(limit);
+    const numericPage = parseInt(page);
+    const skip = (numericPage - 1) * numericLimit;
+
+    // -----------------------------------------
+    // 🔍 If search exists → return exact product
+    // -----------------------------------------
     if (search) {
-      const product = await ProductModel.findOne({ title: search });
+      const product = await ProductModel.findOne({ title: search }).populate("catagory");
 
-      // Return 404 if no product is found, otherwise return the product.
       if (!product) {
-        return res.json([]);
+        return res.status(200).json({
+          total: 0,
+          page: numericPage,
+          limit: numericLimit,
+          totalPages: 0,
+          data: []
+        });
       }
-      return res.json(new Array(product));
+
+      return res.status(200).json({
+        total: 1,
+        page: numericPage,
+        limit: numericLimit,
+        totalPages: 1,
+        data: [product]
+      });
     }
 
-    // If no search query, return all products.
-    const allItems = await ProductModel.find({}).populate("catagory").exec();
-    res.status(200).json(allItems);
+    // -----------------------------------------
+    // 📄 Normal Pagination (No Search)
+    // -----------------------------------------
+    const totalProducts = await ProductModel.countDocuments();
+
+    const products = await ProductModel.find({})
+      .populate("catagory")
+      .skip(skip)
+      .limit(numericLimit)
+      .exec();
+
+    return res.status(200).json({
+      total: totalProducts,
+      page: numericPage,
+      limit: numericLimit,
+      totalPages: Math.ceil(totalProducts / numericLimit),
+      data: products
+    });
+
   } catch (err) {
     console.error("Error in GetProduct:", err);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 export const PostProduct = async (req, res) => {
   try {
@@ -100,5 +123,21 @@ export const UpdateProduct = async (req, res) => {
   } catch (err) {
     console.error("Error updating product:", err);
     res.status(500).json({ message: "Error updating product: " + err.message });
+  }
+};
+
+export const GetSingleProduct = async (req, res) => {
+  try {
+    const { id } = req.params; 
+    const product = await ProductModel.findById(id).populate("catagory").exec();
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json(product);
+  } catch (err) {
+    console.error("Error fetching product:", err);
+    res.status(500).json({ message: "Error fetching product: " + err.message });
   }
 };
