@@ -63,10 +63,17 @@ export const GetProduct = async (req, res) => {
 
 export const PostProduct = async (req, res) => {
   try {
-    const { title, price, image, catagory } = req.body;
+    const { title, price, catagory, discount, countInStock, brand, description } = req.body;
+    let image = "";
 
-    if (!title || !price || !image || !catagory) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (req.file) {
+      image = req.file.path.replace(/\\/g, "/"); // Normalize path
+    } else if (req.body.image) {
+      image = req.body.image; // Allow URL string if no file provided
+    }
+
+    if (!title || !price || !catagory) {
+      return res.status(400).json({ message: "Title, Price and Category are required" });
     }
 
     const newProduct = await ProductModel.create({
@@ -74,6 +81,10 @@ export const PostProduct = async (req, res) => {
       price,
       image,
       catagory,
+      discount: discount || 0,
+      countInStock: countInStock || 0,
+      brand: brand || "",
+      description: description || ""
     });
     res.status(201).json(newProduct);
   } catch (err) {
@@ -101,17 +112,23 @@ export const DeleteProduct = async (req, res) => {
 export const UpdateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, price, image, catagory } = req.body;
+    const { title, price, catagory, discount, countInStock, brand, description } = req.body;
 
-    //validating
-    if (!title || !price || !image || !catagory) {
-      return res.status(400).json({ message: "All fields are required" });
+    let updateData = {
+      title, price, catagory, discount, countInStock, brand, description
+    };
+
+    if (req.file) {
+      updateData.image = req.file.path.replace(/\\/g, "/");
+    } else if (req.body.image) {
+      // If sending image as URL string
+      updateData.image = req.body.image;
     }
 
     // find product by id and update
     const updatedProduct = await ProductModel.findByIdAndUpdate(
       id,
-      { title, price, image, catagory },
+      updateData,
       { new: true, runValidators: true } // return updated doc + validate schema
     );
 
@@ -128,7 +145,7 @@ export const UpdateProduct = async (req, res) => {
 
 export const GetSingleProduct = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     const product = await ProductModel.findById(id).populate("catagory").exec();
 
     if (!product) {
