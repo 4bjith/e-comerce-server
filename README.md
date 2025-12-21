@@ -95,7 +95,7 @@ app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 ### `middleware/auth.js`
 ```js
 import jwt from "jsonwebtoken";
-const JWT_SECRET = process.env.JWT_SECRET || "qwerty";
+const JWT_SECRET = process.env.JWT_SECRET ;
 
 export const LoginCheck = async (req, res, next) => {
   try {
