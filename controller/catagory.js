@@ -38,7 +38,7 @@ export const updateCatagory = async (req, res) => {
     let updateData = { catagoryName };
 
     if (req.file) {
-      updateData.catagoryImage = req.file.path.replace(/\\/g, "/");
+      updateData.catagoryName = req.file.path.replace(/\\/g, "/");
     }
 
     const updatedCatagory = await catagoryModel.findByIdAndUpdate(
