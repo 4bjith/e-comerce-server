@@ -11,7 +11,7 @@ export const Login = async (req, res) => {
       const isMatch = await usr.comparePassword(password)
 
       if(isMatch){
-        const token = jwt.sign({email:usr.email},'qwerty',{expiresIn: '4h'})
+        const token = jwt.sign({email:usr.email,role:usr.role},'qwerty',{expiresIn: '4h'})
         res.json({
           status:"Login done",
           token:token
@@ -49,4 +49,13 @@ export const Register=async(req,res)=>{
       console.error("Register error : ",err)
       res.status(500).json({status: "error",message:"Server error"})
     }
+}
+
+export const getUser = async(req,res)=>{
+  const usr = await UserModel.find({})
+  res.status(201).json(usr)
+}
+
+export const checkAdmin = async(req,res) => {
+  return res.status(200).json({role:"admin"})
 }
