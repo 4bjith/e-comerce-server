@@ -7,55 +7,108 @@ export const Login = async (req, res) => {
   try {
     const usr = await UserModel.findOne({ email });
 
-    if(usr){
-      const isMatch = await usr.comparePassword(password)
-
-      if(isMatch){
-        const token = jwt.sign({email:usr.email,role:usr.role},'qwerty',{expiresIn: '4h'})
-        res.json({
-          status:"Login done",
-          token:token
-        })
-      }else{
-        res.send('Wrong password')
-      }
-    }else{
-      res.send("no user found")
+    if (!usr) {
+      return res.status(404).json({ status: "error", message: "No user found" });
     }
+
+    const isMatch = await usr.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ status: "error", message: "Wrong password" });
+    }
+
+    const token = jwt.sign(
+      { email: usr.email, id: usr._id, role: usr.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "4h" }
+    );
+
+    res.json({
+      status: "Login done",
+      token,
+    });
 
   } catch (error) {
     console.error("Login error:", error);
-    return res.status(500).send("Server error");
+    return res.status(500).json({ status: "error", message: "Server error" });
   }
 };
 
 
-export const Register=async(req,res)=>{
-    const {name,email,password}=req.body
 
-    try{
-      const existing = await UserModel.findOne({email})
-      if(existing){
-        return res.status(400).json({status : "error", message:"User already exist"})
-      }
+export const Register = async (req, res) => {
+  const { name, email, password, mobile } = req.body
 
-      const newUser = await UserModel.create({name,email,password})
-      res.status(201).json({
-        status:"success",
-        message:"User created",
-        userId: newUser._id,
-      })
-    }catch(err){
-      console.error("Register error : ",err)
-      res.status(500).json({status: "error",message:"Server error"})
+  try {
+    const existing = await UserModel.findOne({ email })
+    if (existing) {
+      return res.status(400).json({ status: "error", message: "User already exist" })
     }
+
+    const newUser = await UserModel.create({ name, email, password, mobile })
+    res.status(201).json({
+      status: "success",
+      message: "User created",
+      userId: newUser._id,
+    })
+  } catch (err) {
+    console.error("Register error : ", err)
+    res.status(500).json({ status: "error", message: "Server error" })
+  }
 }
 
-export const getUser = async(req,res)=>{
-  const usr = await UserModel.find({})
-  res.status(201).json(usr)
+export const getUser = async (req, res) => {
+  const email = req.user?.email;
+  try {
+    const user = await UserModel.findOne({ email })
+    if (!user) {
+      return res.status(404).json({ status: "error", message: "No user found" })
+    }
+    res.json({
+      status: "success",
+      user
+    })
+  } catch (err) {
+    console.error("Get user error : ", err)
+    res.status(500).json({ status: "error", message: "Server error" })
+  }
+
+
 }
 
-export const checkAdmin = async(req,res) => {
-  return res.status(200).json({role:"admin"})
+export const updateUser = async (req, res) => {
+  const email = req.user?.email;
+  const { name, mobile, address, age, profile } = req.body;
+
+  try {
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ status: "error", message: "User not found" });
+    }
+
+    // Update fields
+    if (name) user.name = name;
+    if (mobile) user.mobile = mobile;
+    if (address) user.address = address;
+    if (age) user.age = age;
+
+    // Handle image upload
+    if (req.file) {
+      user.profile = req.file.path.replace(/\\/g, "/");
+    } else if (profile) {
+      // Allow manual URL update if provided and no file
+      user.profile = profile;
+    }
+
+    await user.save();
+
+    res.json({
+      status: "success",
+      message: "User updated successfully",
+      user
+    });
+
+  } catch (err) {
+    console.error("Update user error: ", err);
+    res.status(500).json({ status: "error", message: "Server error" });
+  }
 }

@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import path from 'path';
 
 import AuthRoute from "./routes/auth.js";
 
@@ -24,6 +25,9 @@ mongoose
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+// Make uploads folder static
+app.use('/uploads', express.static('uploads'));
 
 app.use(AuthRoute);
 
