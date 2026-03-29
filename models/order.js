@@ -41,6 +41,11 @@ const OrderSchema = new mongoose.Schema({
   },
   TotalPrice:{
     type:Number
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'shipping', 'delivered', 'canceled'],
+    default: 'pending'
   }
 }, { timestamps: true }); // optional: adds createdAt and updatedAt fields
 

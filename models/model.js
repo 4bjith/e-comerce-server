@@ -25,6 +25,14 @@ const ProductSchema = new mongoose.Schema({
   description: {
     type: String,
     default: ""
+  },
+  rating: {
+    type: Number,
+    default: 0
+  },
+  numReviews: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
 
