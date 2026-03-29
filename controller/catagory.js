@@ -1,23 +1,22 @@
-import express from "express";
-
 import catagoryModel from "../models/catagory.js";
+import { ErrorHandler } from "../middleware/errorMiddleware.js";
 
-export const getCatagory = async (req, res) => {
+export const getCatagory = async (req, res, next) => {
   try {
     const catagory = await catagoryModel.find({});
     res.status(200).json(catagory);
   } catch (err) {
-    res.status(500).json({ message: "Failed to get catagory" });
+    next(err);
   }
 };
 
-export const postCatagory = async (req, res) => {
+export const postCatagory = async (req, res, next) => {
   try {
     const { catagoryName } = req.body;
     let catagoryImage = "";
 
     if (req.file) {
-      catagoryImage = req.file.path.replace(/\\/g, "/"); // Convert backslashes
+      catagoryImage = req.file.path.replace(/\\/g, "/");
     }
 
     const newCatagory = await catagoryModel.create({
@@ -26,19 +25,18 @@ export const postCatagory = async (req, res) => {
     });
     res.status(201).json(newCatagory);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to create catagory" });
+    next(err);
   }
 };
 
-export const updateCatagory = async (req, res) => {
+export const updateCatagory = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { catagoryName } = req.body;
     let updateData = { catagoryName };
 
     if (req.file) {
-      updateData.catagoryName = req.file.path.replace(/\\/g, "/");
+      updateData.catagoryImage = req.file.path.replace(/\\/g, "/");
     }
 
     const updatedCatagory = await catagoryModel.findByIdAndUpdate(
@@ -48,27 +46,26 @@ export const updateCatagory = async (req, res) => {
     );
 
     if (!updatedCatagory) {
-      return res.status(404).json({ message: "Category not found" });
+      throw new ErrorHandler("Category not found", 404);
     }
 
     res.status(200).json(updatedCatagory);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to update category: " + err.message });
+    next(err);
   }
 };
 
-export const deleteCatagory = async (req, res) => {
+export const deleteCatagory = async (req, res, next) => {
   try {
     const { id } = req.params;
 
     const delCategory = await catagoryModel.findByIdAndDelete(id);
 
     if (!delCategory) {
-      return res.status(404).send("specific category not found. ")
+      throw new ErrorHandler("Category not found", 404);
     }
-    res.status(200).send("Category deleted sucessfully. ")
+    res.status(200).json({ message: "Category deleted successfully" });
   } catch (err) {
-    res.status(500).send(err.message + "Error while running category delete function")
+    next(err);
   }
 }

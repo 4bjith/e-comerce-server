@@ -1,101 +1,99 @@
 import UserModel from "../models/user.js";
 import jwt from 'jsonwebtoken'
+import { ErrorHandler } from "../middleware/errorMiddleware.js";
 
-export const Login = async (req, res) => {
+const JWT_SECRET = process.env.JWT_SECRET || "qwerty";
+
+export const Login = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
     const usr = await UserModel.findOne({ email });
 
     if (!usr) {
-      return res.status(404).json({ status: "error", message: "No user found" });
+      throw new ErrorHandler("No user found", 404);
     }
 
     const isMatch = await usr.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ status: "error", message: "Wrong password" });
+      throw new ErrorHandler("Wrong password", 400);
     }
 
     const token = jwt.sign(
-      { email: usr.email, id: usr._id, role: usr.role },
-      process.env.JWT_SECRET,
+      { email: usr.email, id: usr._id, role: usr.role, name: usr.name },
+      JWT_SECRET,
       { expiresIn: "4h" }
     );
 
+    const userResponse = usr.toObject();
+    delete userResponse.password;
+
     res.json({
-      status: "Login done",
+      status: "success",
+      message: "Login successful",
       token,
+      user: userResponse,
     });
 
   } catch (error) {
-    console.error("Login error:", error);
-    return res.status(500).json({ status: "error", message: "Server error" });
+    next(error);
   }
 };
 
-
-
-export const Register = async (req, res) => {
-  const { name, email, password, mobile } = req.body
+export const Register = async (req, res, next) => {
+  const { name, email, password, mobile } = req.body;
 
   try {
-    const existing = await UserModel.findOne({ email })
+    const existing = await UserModel.findOne({ email });
     if (existing) {
-      return res.status(400).json({ status: "error", message: "User already exist" })
+      throw new ErrorHandler("User already exists", 400);
     }
 
-    const newUser = await UserModel.create({ name, email, password, mobile })
+    const newUser = await UserModel.create({ name, email, password, mobile });
     res.status(201).json({
       status: "success",
       message: "User created",
       userId: newUser._id,
-    })
+    });
   } catch (err) {
-    console.error("Register error : ", err)
-    res.status(500).json({ status: "error", message: "Server error" })
+    next(err);
   }
 }
 
-export const getUser = async (req, res) => {
+export const getUser = async (req, res, next) => {
   const email = req.user?.email;
   try {
-    const user = await UserModel.findOne({ email })
+    const user = await UserModel.findOne({ email });
     if (!user) {
-      return res.status(404).json({ status: "error", message: "No user found" })
+      throw new ErrorHandler("No user found", 404);
     }
     res.json({
       status: "success",
       user
-    })
+    });
   } catch (err) {
-    console.error("Get user error : ", err)
-    res.status(500).json({ status: "error", message: "Server error" })
+    next(err);
   }
-
-
 }
 
-export const updateUser = async (req, res) => {
+export const updateUser = async (req, res, next) => {
   const email = req.user?.email;
   const { name, mobile, address, age, profile } = req.body;
 
   try {
     const user = await UserModel.findOne({ email });
     if (!user) {
-      return res.status(404).json({ status: "error", message: "User not found" });
+      throw new ErrorHandler("User not found", 404);
     }
 
-    // Update fields
     if (name) user.name = name;
     if (mobile) user.mobile = mobile;
     if (address) user.address = address;
     if (age) user.age = age;
 
-    // Handle image upload
     if (req.file) {
       user.profile = req.file.path.replace(/\\/g, "/");
     } else if (profile) {
-      // Allow manual URL update if provided and no file
       user.profile = profile;
     }
 
@@ -108,7 +106,6 @@ export const updateUser = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Update user error: ", err);
-    res.status(500).json({ status: "error", message: "Server error" });
+    next(err);
   }
 }
